@@ -79,7 +79,7 @@ header.top{border-bottom:2px solid var(--accent);padding-bottom:16px}
 .totals b{font-family:var(--mono);color:var(--fg);font-weight:500}
 
 .list{list-style:none;margin:0;padding:0}
-.row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:4px 14px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:72px minmax(0,1fr) auto auto;gap:4px 14px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:0}
 .date{font-family:var(--mono);font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .who{min-width:0}
@@ -251,6 +251,26 @@ form{display:flex;flex-direction:column;gap:14px}
   .row{padding:12px}
 }
 @media (display-mode:standalone){#installBtn{display:none!important}}
+.iextra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center}
+.iextra input[data-k=det]{border:1px solid var(--line);background:var(--sunken);border-radius:8px;padding:7px 10px;width:100%;min-width:0;font-size:.88rem}
+.ilist:not(.venda) .iextra{display:none}
+.imgbox{display:flex;align-items:center;gap:6px}
+.imgbtn{border:1px dashed var(--fg);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:.82rem;font-weight:600;white-space:nowrap}
+.thumb{width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--sunken)}
+.imgrm{border:0;background:var(--sunken);border-radius:6px;width:26px;height:26px}
+.rthumbs{display:flex;gap:8px;flex-wrap:wrap}
+.rthumbs img{width:88px;height:88px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.pdfbtn{background:var(--fg)!important;color:#fff!important;border-color:var(--fg)!important}
+.pdfready{display:flex;flex-direction:column;gap:10px}
+.pdfready .btn{width:100%;padding:12px}
+.ract{display:flex;gap:6px;align-items:center}
+.ibtn{display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 9px;font-size:.78rem;font-weight:600;color:var(--fg)}
+.ibtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ibtn:hover{border-color:var(--fg)}
+.ibtn.del{color:var(--bad)} .ibtn.del:hover{border-color:var(--bad);background:var(--bad-bg)}
+.row.confirming{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--bad-bg)}
+.cmsg{font-size:.88rem;color:var(--bad)} .cbtns{display:flex;gap:8px}
+@media (max-width:520px){.ract{grid-column:1/-1;justify-content:flex-end}}
 </style>
 
 </head>
@@ -405,6 +425,7 @@ function render(){
         <span class="party">${p.categoria?esc(p.categoria)+" · ":""}${esc(p.parte||"—")}</span></span>
       <span class="right"><span class="amt">${brl(total(p))}</span>
         <span style="display:flex;gap:4px">${p.exemplo?'<span class="chip tag-ex">exemplo</span>':""}<span class="chip ${stClass(p.status)}">${esc(p.status||"Pendente")}</span></span></span>`}
+      ${state.canWrite?`<span class="ract"><button type="button" class="ibtn" data-edit="${esc(p.id)}" title="Editar" aria-label="Editar ${esc(p.nome)}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg><span>Editar</span></button><button type="button" class="ibtn del" data-del="${esc(p.id)}" title="Excluir" aria-label="Excluir ${esc(p.nome)}"><svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg><span>Excluir</span></button></span>`:""}
     </li>`).join("")+(state.canWrite?`<li class="addrow"><button type="button" onclick="showForm(null)">${t==="compra"?"+ Adicionar outra compra":"+ Adicionar outra venda"}</button></li>`:"");
 }
 
@@ -436,7 +457,15 @@ function closeSheet(){$("shade").hidden=true;document.body.style.overflow=""}
 $("shade").onclick=e=>{if(e.target===$("shade"))closeSheet()};
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closePops();if(!$("shade").hidden)closeSheet()}});
 
-$("list").onclick=e=>{const b=e.target.closest(".name");if(b)showResumo(b.dataset.id)};
+$("list").onclick=async e=>{
+  const b=e.target.closest(".name");if(b){showResumo(b.dataset.id);return}
+  const ed=e.target.closest("[data-edit]");if(ed){const p=state.pedidos.find(x=>x.id===ed.dataset.edit);if(p)showForm(p);return}
+  const dl=e.target.closest("[data-del]");
+  if(dl){const p=state.pedidos.find(x=>x.id===dl.dataset.del);if(!p)return;const li=dl.closest(".row");
+    li.classList.add("confirming");li.innerHTML=`<span class="cmsg">Excluir <b>${esc(p.nome)}${p.parte?" · "+esc(p.parte):""}</b> (${brl(total(p))})? Não dá para desfazer.</span><span class="cbtns"><button type="button" class="btn danger" data-delyes="${esc(p.id)}">Excluir</button><button type="button" class="btn" data-delno>Cancelar</button></span>`;return}
+  const y=e.target.closest("[data-delyes]");if(y){y.disabled=true;y.textContent="Excluindo…";await remove(y.dataset.delyes);render();return}
+  if(e.target.closest("[data-delno]"))render();
+};
 
 function showResumo(id){
   const p=state.pedidos.find(x=>x.id===id);if(!p)return;
@@ -448,12 +477,18 @@ function showResumo(id){
       ${p.tipo==="compra"?`<dt>Categoria</dt><dd>${esc(p.categoria||"Outros")}</dd>`:""}<dt>${PARTY[p.tipo]}</dt><dd>${esc(p.parte||"—")}</dd>
       <dt>Situação</dt><dd>${p.tipo==="venda"?(state.canWrite?selPicker(selosOf(p),"r-selos"):`<span class="selos">${selChips(p)}</span>`):`<span class="chip ${stClass(p.status)}">${esc(p.status||"Pendente")}</span>`}${p.exemplo?' <span class="chip tag-ex">exemplo</span>':""}</dd>
       ${p.pagamento?`<dt>Pagamento</dt><dd>${esc(p.pagamento)}</dd>`:""}
+      ${p.contato?`<dt>Contato</dt><dd>${esc(p.contato)}</dd>`:""}
+      ${p.entrega?`<dt>Entrega prevista</dt><dd>${fmtDate(p.entrega)}</dd>`:""}
     </dl>
     <div class="tablewrap"><table class="items"><thead><tr><th>Item</th><th class="num">Qtd</th><th class="num">Unit.</th><th class="num">Subtotal</th></tr></thead>
-      <tbody>${itens.map(i=>`<tr><td>${esc(i.desc)}${i.marca||i.cor?`<span class="fmeta">${[i.marca,i.cor].filter(Boolean).map(esc).join(" · ")}</span>`:""}</td><td class="num">${esc(i.qtd)}</td><td class="num">${brl(+i.valor)}</td><td class="num">${brl((+i.qtd||0)*(+i.valor||0))}</td></tr>`).join("")||'<tr><td colspan="4">Sem itens</td></tr>'}</tbody>
+      <tbody>${itens.map(i=>`<tr><td>${esc(i.desc)}${i.marca||i.cor?`<span class="fmeta">${[i.marca,i.cor].filter(Boolean).map(esc).join(" · ")}</span>`:""}${i.det?`<span class="fmeta">${esc(i.det)}</span>`:""}</td><td class="num">${esc(i.qtd)}</td><td class="num">${brl(+i.valor)}</td><td class="num">${brl((+i.qtd||0)*(+i.valor||0))}</td></tr>`).join("")||'<tr><td colspan="4">Sem itens</td></tr>'}</tbody>
       <tfoot><tr><td colspan="3">Total</td><td class="num">${brl(total(p))}</td></tr></tfoot></table></div>
+    ${itens.some(i=>i.img)?`<div class="rthumbs" id="rthumbs">${itens.filter(i=>i.img).map(i=>`<img alt="${esc(i.desc)}" data-thumb="${esc(i.img)}">`).join("")}</div>`:""}
     ${p.obs?`<div><div class="lab" style="margin-bottom:4px">Observações</div><div class="obs">${esc(p.obs)}</div></div>`:""}
+    ${p.tipo==="venda"?`<button class="btn primary pdfbtn" type="button" id="pdfBtn">Gerar PDF do pedido para o cliente</button>`:""}
     ${state.canWrite?`<button class="addi" type="button" id="addItemBtn">+ Adicionar item</button><div class="actions"><button class="btn primary" type="button" id="editBtn">Editar</button><button class="btn danger" type="button" id="delBtn">Excluir</button></div><div id="confirmBox"></div>`:""}`);
+  if($("pdfBtn"))$("pdfBtn").onclick=()=>gerarPdf(p);
+  document.querySelectorAll("#rthumbs img").forEach(async im=>{const d=await getImg(im.dataset.thumb);if(d)im.src=d;else im.remove()});
   if(!state.canWrite)return;
   if($("r-selos"))$("r-selos").onclick=async e=>{
     const b=e.target.closest("button");if(!b)return;
@@ -476,7 +511,8 @@ function showResumo(id){
 
 function itemRow(i={desc:"",qtd:1,valor:""}){
   return`<div class="item"><div class="irow"><input aria-label="Descrição do item" placeholder="Descrição (ex.: PLA 1 kg)" value="${esc(i.desc)}" data-k="desc"><input aria-label="Quantidade" type="number" min="0" step="any" value="${esc(i.qtd)}" data-k="qtd"><input aria-label="Valor unitário" type="number" min="0" step="0.01" placeholder="R$ unit." value="${esc(i.valor)}" data-k="valor"><button type="button" class="rm" aria-label="Remover item">×</button></div>
-  <div class="ifil"><input aria-label="Marca do filamento" placeholder="Marca" list="dl-marca" value="${esc(i.marca||"")}" data-k="marca"><input aria-label="Cor do filamento" placeholder="Cor" list="dl-cor" value="${esc(i.cor||"")}" data-k="cor"><span></span></div></div>`;
+  <div class="ifil"><input aria-label="Marca do filamento" placeholder="Marca" list="dl-marca" value="${esc(i.marca||"")}" data-k="marca"><input aria-label="Cor do filamento" placeholder="Cor" list="dl-cor" value="${esc(i.cor||"")}" data-k="cor"><span></span></div>
+  <div class="iextra"><input aria-label="Detalhes do item" placeholder="Detalhes p/ o PDF (material, cor, medidas…)" value="${esc(i.det||"")}" data-k="det"><span class="imgbox"><input type="hidden" data-k="img" value="${esc(i.img||"")}"><img class="thumb" alt="" ${i.img?"":"hidden"} data-thumb="${esc(i.img||"")}"><button type="button" class="imgbtn">${i.img?"Trocar foto":"+ Foto"}</button><button type="button" class="imgrm" aria-label="Remover foto" ${i.img?"":"hidden"}>×</button><input type="file" accept="image/*" hidden></span></div></div>`;
 }
 function filLists(){
   const m=new Set(["Bambu Lab","Voolt3D","3D Fila","Sunlu","eSun","Creality","Polymaker"]),c=new Set(["Preto","Branco","Cinza","Vermelho","Azul","Verde","Amarelo","Laranja","Transparente"]);
@@ -496,8 +532,9 @@ function showForm(p,pre,addItem){
     </div>
     ${tipo==="venda"?`<div class="field"><span class="lab">Situação da venda</span>${selPicker(selosOf(def),"f-selos")}</div>`:""}
     <div class="field"><label for="f-parte">${PARTY[tipo]}</label><input id="f-parte" value="${esc(def.parte)}"></div>
+    ${tipo==="venda"?`<div class="two"><div class="field"><label for="f-contato">Contato (WhatsApp)</label><input id="f-contato" inputmode="tel" value="${esc(def.contato||"")}" placeholder="(46) 9…"></div><div class="field"><label for="f-entrega">Entrega prevista</label><input id="f-entrega" type="date" value="${esc(def.entrega||"")}"></div></div>`:""}
     <div class="field"><label for="f-pag">Forma de pagamento</label><input id="f-pag" value="${esc(def.pagamento||"")}" placeholder="Pix, boleto, cartão…"></div>
-    <div class="field"><span class="lab">${tipo==="compra"?"Itens comprados":"Itens vendidos"}</span>${filLists()}<div class="ilist${tipo==="compra"&&(def.categoria||"Filamento")==="Filamento"?" fil":""}" id="ilist">${(def.itens||[]).map(itemRow).join("")}</div></div>
+    <div class="field"><span class="lab">${tipo==="compra"?"Itens comprados":"Itens vendidos"}</span>${filLists()}<div class="ilist${tipo==="compra"&&(def.categoria||"Filamento")==="Filamento"?" fil":""}${tipo==="venda"?" venda":""}" id="ilist">${(def.itens||[]).map(itemRow).join("")}</div></div>
     <button type="button" class="addi" id="addi">+ Adicionar item</button>
     <div class="ftotal"><span>Total</span><span id="ftot"></span></div>
     ${tipo==="venda"?`<div class="paybox${selosOf(def).includes("Pago")?" on":""}" id="paybox"><label class="pf" for="f-pago"><input type="checkbox" id="f-pago" ${selosOf(def).includes("Pago")?"checked":""}> Cliente pagou</label><span class="pd" id="f-pd" ${selosOf(def).includes("Pago")?"":"hidden"}><label for="f-pagoem">em</label><input type="date" id="f-pagoem" value="${esc(def.pagoEm||def.data||"")}"></span></div>`:""}
@@ -505,13 +542,29 @@ function showForm(p,pre,addItem){
     <p class="err" id="ferr" hidden></p>
     <div class="actions"><button class="btn primary" type="submit" id="saveBtn">Salvar pedido</button><button class="btn" type="button" onclick="closeSheet()">Cancelar</button></div>
   </form>`);
-  const readItems=()=>{const fil=$("ilist").classList.contains("fil");return[...$("ilist").querySelectorAll(".item")].map(r=>{const o={desc:r.querySelector('[data-k=desc]').value.trim(),qtd:+r.querySelector('[data-k=qtd]').value||0,valor:+r.querySelector('[data-k=valor]').value||0};if(fil){o.marca=r.querySelector('[data-k=marca]').value.trim();o.cor=r.querySelector('[data-k=cor]').value.trim()}return o}).filter(i=>i.desc||i.valor)};
+  const readItems=()=>{const fil=$("ilist").classList.contains("fil");return[...$("ilist").querySelectorAll(".item")].map(r=>{const o={desc:r.querySelector('[data-k=desc]').value.trim(),qtd:+r.querySelector('[data-k=qtd]').value||0,valor:+r.querySelector('[data-k=valor]').value||0};if(fil){o.marca=r.querySelector('[data-k=marca]').value.trim();o.cor=r.querySelector('[data-k=cor]').value.trim()}if($("ilist").classList.contains("venda")){const d=r.querySelector('[data-k=det]').value.trim(),im=r.querySelector('[data-k=img]').value;if(d)o.det=d;if(im)o.img=im}return o}).filter(i=>i.desc||i.valor)};
   if($("f-cat"))$("f-cat").onchange=()=>$("ilist").classList.toggle("fil",$("f-cat").value==="Filamento");
   const upd=()=>$("ftot").textContent=brl(total({itens:readItems()}));
   if(addItem){$("ilist").insertAdjacentHTML("beforeend",itemRow());setTimeout(()=>{const r=$("ilist").lastElementChild;r&&r.querySelector("input").focus()},50)}
   upd();
   $("ilist").addEventListener("input",upd);
-  $("ilist").onclick=e=>{if(e.target.closest(".rm")){e.target.closest(".item").remove();upd()}};
+  $("ilist").onclick=e=>{
+    if(e.target.closest(".rm")){e.target.closest(".item").remove();upd();return}
+    const box=e.target.closest(".imgbox");if(!box)return;
+    if(e.target.closest(".imgbtn"))box.querySelector("input[type=file]").click();
+    if(e.target.closest(".imgrm")){box.querySelector("[data-k=img]").value="";box.querySelector(".thumb").hidden=true;e.target.hidden=true;box.querySelector(".imgbtn").textContent="+ Foto"}
+  };
+  $("ilist").addEventListener("change",async e=>{
+    if(e.target.type!=="file"||!e.target.files[0])return;
+    const box=e.target.closest(".imgbox"),btn=box.querySelector(".imgbtn");btn.textContent="Enviando…";btn.disabled=true;$("saveBtn").disabled=true;
+    try{
+      const d=await compressImage(e.target.files[0]);const id="img-"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      box.querySelector(".thumb").src=d;box.querySelector(".thumb").hidden=false;box.querySelector(".imgrm").hidden=false;
+      await store.saveImg(id,d);box.querySelector("[data-k=img]").value=id;btn.textContent="Trocar foto";
+    }catch(err){btn.textContent="+ Foto";$("ferr").textContent="Foto não salva: "+err.message+".";$("ferr").hidden=false;box.querySelector(".thumb").hidden=true}
+    btn.disabled=false;$("saveBtn").disabled=false;e.target.value="";
+  });
+  $("ilist").querySelectorAll("img[data-thumb]").forEach(async im=>{if(im.dataset.thumb){const d=await getImg(im.dataset.thumb);if(d)im.src=d;else im.hidden=true}});
   $("addi").onclick=()=>{$("ilist").insertAdjacentHTML("beforeend",itemRow());$("ilist").lastElementChild.querySelector("input").focus();upd()};
   if($("f-selos"))$("f-selos").onclick=e=>{const b=e.target.closest("button");if(!b)return;const cur=[...$("f-selos").querySelectorAll("[aria-pressed=true]")].map(x=>x.dataset.s);const sel=toggleSelo(cur,b.dataset.s);$("f-selos").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",sel.includes(x.dataset.s)));syncPago(sel.includes("Pago"))};
   const syncPago=on=>{if(!$("f-pago"))return;$("f-pago").checked=on;$("paybox").classList.toggle("on",on);$("f-pd").hidden=!on;if(on&&!$("f-pagoem").value){const d=new Date();$("f-pagoem").value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}};
@@ -524,13 +577,14 @@ function showForm(p,pre,addItem){
   };
   $("f").onsubmit=async e=>{
     e.preventDefault();
-    const rec={tipo,...(tipo==="compra"?{categoria:$("f-cat").value}:{}),nome:$("f-nome").value.trim(),data:$("f-data").value,parte:$("f-parte").value.trim(),...(tipo==="venda"?(()=>{const a=[...$("f-selos").querySelectorAll("[aria-pressed=true]")].map(b=>b.dataset.s);return{selos:a,status:statusFromSelos(a),pagoEm:a.includes("Pago")?($("f-pagoem").value||$("f-data").value):null}})():{status:$("f-status").value}),pagamento:$("f-pag").value.trim(),obs:$("f-obs").value.trim(),itens:readItems()};
+    const rec={tipo,...(tipo==="compra"?{categoria:$("f-cat").value}:{}),nome:$("f-nome").value.trim(),data:$("f-data").value,parte:$("f-parte").value.trim(),...(tipo==="venda"?(()=>{const a=[...$("f-selos").querySelectorAll("[aria-pressed=true]")].map(b=>b.dataset.s);return{selos:a,status:statusFromSelos(a),pagoEm:a.includes("Pago")?($("f-pagoem").value||$("f-data").value):null}})():{status:$("f-status").value}),...(tipo==="venda"?{contato:$("f-contato").value.trim(),entrega:$("f-entrega").value}:{}),pagamento:$("f-pag").value.trim(),obs:$("f-obs").value.trim(),itens:readItems()};
     if(!rec.nome||!rec.data){$("ferr").textContent="Preencha o nome e a data do pedido.";$("ferr").hidden=false;return}
     $("saveBtn").disabled=true;
     const ok=await save(p?.id,rec);
     if(!ok){$("saveBtn").disabled=false;return}
     const[y,m]=rec.data.split("-");state.tipo=tipo;state.ano[tipo]=+y;state.mes[tipo]=+m-1;
-    render();closeSheet();
+    render();
+    if(tipo==="venda"&&typeof ok==="string")showResumo(ok);else closeSheet();
   };
 }
 $("newBtn").onclick=()=>state.tipo==="fin"?showLanc(null):showForm(null);
@@ -688,6 +742,125 @@ function showLanc(p){
   };
 }
 
+/* ---------- pedido em PDF ---------- */
+const EMPRESA={
+  nome:"LF3D Impressões 3D",
+  slogan:"Ideias ganham forma",
+  linhas:["Rua Araucária, 147 – Bairro São Francisco de Assis","Dois Vizinhos – PR","(46) 99970-0064 · @lf3d.dv"],
+  obsPadrao:["Peças impressas sob encomenda; pequenas variações de acabamento são características do processo de impressão 3D.","Orçamento válido por 7 dias a partir da data acima."]
+};
+const imgCache={};
+function compressImage(file){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onerror=()=>rej(new Error("Não foi possível ler a imagem."));
+    fr.onload=()=>{const im=new Image();im.onerror=()=>rej(new Error("Formato de imagem não suportado."));im.onload=()=>{
+      const max=1100,k=Math.min(1,max/Math.max(im.width,im.height));
+      const c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+      const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);
+      res(c.toDataURL("image/jpeg",0.85));
+    };im.src=fr.result};
+    fr.readAsDataURL(file);
+  });
+}
+async function getImg(id){
+  if(!id)return null;
+  if(imgCache[id])return imgCache[id];
+  const v=await store.getImg(id);if(v)imgCache[id]=v;return v||null;
+}
+function loadScript(src){return new Promise((res,rej)=>{if(window.jspdf)return res();const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error("Sem internet para gerar o PDF."));document.head.appendChild(sc)})}
+const imgSize=src=>new Promise(r=>{const i=new Image();i.onload=()=>r({w:i.width,h:i.height});i.onerror=()=>r(null);i.src=src});
+async function buildPdf(p){
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});
+  const W=210,M=18,R=W-M;let y=16;
+  const ink=[17,17,17],muted=[95,99,92],green=[106,158,0],lime=[170,245,5];
+  const logo=document.querySelector(".brand img")?.src;
+  // cabeçalho
+  if(logo){try{doc.addImage(logo,"JPEG",M,y-2,26,19.4)}catch(e){}}
+  const tx=M+(logo?30:0);
+  doc.setFont("helvetica","bold");doc.setFontSize(17);doc.setTextColor(...ink);
+  doc.text("LF",tx,y+6);let wLF=doc.getTextWidth("LF");
+  doc.setTextColor(...green);doc.text("3D",tx+wLF,y+6);let w3=doc.getTextWidth("3D");
+  doc.setTextColor(...ink);doc.text(" Impressões 3D",tx+wLF+w3,y+6);
+  doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(...muted);doc.text(EMPRESA.slogan,tx,y+12);
+  doc.setFontSize(8);EMPRESA.linhas.forEach((l,i)=>doc.text(l,R,y+1+i*4.2,{align:"right"}));
+  y+=21;doc.setDrawColor(...lime);doc.setLineWidth(0.9);doc.line(M,y,R,y);y+=10;
+  // título e dados
+  doc.setFont("helvetica","bold");doc.setFontSize(14);doc.setTextColor(...ink);doc.text("Pedido de venda",M,y);y+=8;
+  const blank="______________________";
+  const fx=(lab,val,x,yy)=>{doc.setFont("helvetica","bold");doc.setFontSize(9);doc.setTextColor(...muted);doc.text(lab,x,yy);doc.setFont("helvetica","normal");doc.setTextColor(...ink);doc.text(String(val||blank),x+28,yy,{maxWidth:58})};
+  fx("Pedido nº",p.nome,M,y);fx("Data",fmtDate(p.data),110,y);y+=5.5;
+  fx("Cliente",p.parte,M,y);fx("Contato",p.contato,110,y);y+=5.5;
+  fx("Entrega prevista",p.entrega?fmtDate(p.entrega):"____/____/____",M,y);fx("Pagamento",[p.pagamento,selosOf(p).includes("Pago")?"pago":""].filter(Boolean).join(" · "),110,y);y+=9;
+  // tabela
+  const cQ=136,cU=162,cT=R-2;
+  const head=()=>{doc.setFillColor(...ink);doc.rect(M,y,R-M,8,"F");doc.setFont("helvetica","bold");doc.setFontSize(8.5);doc.setTextColor(255,255,255);doc.text("Item",M+2,y+5.3);doc.text("Qtd.",cQ,y+5.3,{align:"right"});doc.text("Valor unit.",cU+8,y+5.3,{align:"right"});doc.text("Total",cT,y+5.3,{align:"right"});y+=12};
+  const newPage=()=>{doc.addPage();y=18};
+  head();
+  for(const it of (p.itens||[])){
+    doc.setFont("helvetica","bold");doc.setFontSize(9.5);
+    const nameL=doc.splitTextToSize(it.desc||"Item",cQ-M-14);
+    doc.setFont("helvetica","normal");doc.setFontSize(8);
+    const detL=it.det?doc.splitTextToSize(it.det,cQ-M-14):[];
+    const hRow=nameL.length*4.4+detL.length*3.7+3;
+    if(y+hRow>272){newPage();head()}
+    doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(...ink);doc.text(nameL,M+2,y);
+    doc.setFont("helvetica","normal");doc.text(String(it.qtd??""),cQ,y,{align:"right"});doc.text(brl(+it.valor),cU+8,y,{align:"right"});doc.text(brl((+it.qtd||0)*(+it.valor||0)),cT,y,{align:"right"});
+    let yy=y+nameL.length*4.4;
+    if(detL.length){doc.setFontSize(8);doc.setTextColor(...muted);doc.text(detL,M+2,yy-0.6);yy+=detL.length*3.7}
+    y=yy+1;doc.setDrawColor(225,228,220);doc.setLineWidth(0.25);doc.line(M,y,R,y);y+=6;
+  }
+  if(y>262)newPage();
+  doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(...ink);
+  doc.text(brl(total(p)),cT,y+1,{align:"right"});doc.text("Total do pedido",cT-doc.getTextWidth(brl(total(p)))-6,y+1,{align:"right"});y+=10;
+  // imagens
+  const imgs=[];for(const it of (p.itens||[])){if(it.img){const d=await getImg(it.img);if(d)imgs.push({d,cap:it.desc})}}
+  if(imgs.length){
+    const one=imgs.length===1,boxW=one?95:(R-M-8)/2,boxH=one?70:55;
+    for(let i=0;i<imgs.length;i++){
+      const col=one?0:i%2;if(!one&&col===0&&i>0)y+=boxH+10;
+      if(y+boxH+8>272){newPage()}
+      const sz=await imgSize(imgs[i].d)||{w:4,h:3};const k=Math.min((boxW-8)/sz.w,(boxH-8)/sz.h);const w=sz.w*k,h=sz.h*k;
+      const bx=one?(W-boxW)/2:M+col*(boxW+8);const ix=bx+(boxW-w)/2,iy=y+(boxH-h)/2;
+      doc.setFillColor(236,239,233);doc.roundedRect(ix-4,iy-4,w+8,h+8,2,2,"F");
+      try{doc.addImage(imgs[i].d,"JPEG",ix,iy,w,h)}catch(e){}
+      if(!one){doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...muted);doc.text(doc.splitTextToSize(imgs[i].cap||"",boxW)[0]||"",bx,y+boxH+4)}
+    }
+    y+=boxH+(one?10:12);
+  }
+  // observações
+  const obs=[...EMPRESA.obsPadrao,...(p.obs?p.obs.split(/\n+/).filter(Boolean):[])];
+  doc.setFont("helvetica","normal");doc.setFontSize(8.8);
+  const obsL=obs.map(o=>doc.splitTextToSize("• "+o,R-M));
+  const obsH=8+obsL.reduce((s,l)=>s+l.length*4.4,0);
+  if(y+obsH+30>285)newPage();
+  doc.setFont("helvetica","bold");doc.setFontSize(10);doc.setTextColor(...ink);doc.text("Observações",M,y);y+=6;
+  doc.setFont("helvetica","normal");doc.setFontSize(8.8);doc.setTextColor(50,50,50);
+  obsL.forEach(l=>{doc.text(l,M,y);y+=l.length*4.4});
+  // assinaturas
+  y=Math.max(y+16,y);if(y>282)newPage(),y=40;
+  doc.setDrawColor(150,150,150);doc.setLineWidth(0.3);doc.line(M,y,M+80,y);doc.line(R-80,y,R,y);
+  doc.setFontSize(8.5);doc.setTextColor(...muted);doc.text(EMPRESA.nome,M+40,y+4.5,{align:"center"});doc.text("Cliente – "+(p.parte||""),R-40,y+4.5,{align:"center"});
+  doc.setProperties({title:`Pedido LF3D – ${p.parte||p.nome}`});
+  return doc;
+}
+async function gerarPdf(p){
+  openSheet(`<div class="sheet-head"><div><div class="kind venda">Pedido em PDF</div><h2>${esc(p.nome)}${p.parte?" · "+esc(p.parte):""}</h2></div><button class="x" type="button" aria-label="Fechar" onclick="closeSheet()">×</button></div><p id="pdfmsg">Gerando o PDF…</p><div class="pdfready" id="pdfact" hidden></div>`);
+  try{
+    const doc=await buildPdf(p);
+    const nomeArq=`Pedido_LF3D_${(p.parte||"cliente").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^\w]+/g,"_")}_${String(p.nome).replace(/[^\w]+/g,"_")}.pdf`;
+    const blob=doc.output("blob");const file=new File([blob],nomeArq,{type:"application/pdf"});
+    const podeCompartilhar=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+    $("pdfmsg").textContent="PDF pronto. Envie para o cliente pelo WhatsApp ou e-mail.";
+    $("pdfact").innerHTML=`${podeCompartilhar?'<button class="btn primary" type="button" id="pdfShare">Enviar (WhatsApp, e-mail…)</button>':""}<button class="btn ${podeCompartilhar?"":"primary"}" type="button" id="pdfDown">Baixar PDF</button><button class="btn" type="button" id="pdfOpen">Abrir para ver</button><button class="btn" type="button" onclick="showResumo('${esc(p.id)}')">Voltar ao pedido</button>`;
+    $("pdfact").hidden=false;
+    if(podeCompartilhar)$("pdfShare").onclick=()=>navigator.share({files:[file],title:"Pedido LF3D"}).catch(()=>{});
+    $("pdfDown").onclick=()=>doc.save(nomeArq);
+    $("pdfOpen").onclick=()=>{const u=URL.createObjectURL(blob);window.open(u,"_blank")||doc.save(nomeArq)};
+  }catch(err){$("pdfmsg").textContent="Não foi possível gerar o PDF: "+(err.message||err)}
+}
+
 /* ---------- data ---------- */
 /* CONFIGURAÇÃO: cole aqui a URL e a chave "anon public" do seu projeto Supabase.
    Em branco = os dados ficam salvos só neste navegador. */
@@ -744,17 +917,28 @@ const store={
       local.write(a);
     }
     await this.load();
+    return id;
   },
   async remove(id){
     if(this.sb){await this.sb.from("pedidos").delete().eq("id",id)}
     else local.write(local.read().filter(x=>x.id!==id));
     await this.load();
   },
-  async saveConfig(c){await this.setCfg("calculadora",c)}
+  async saveConfig(c){await this.setCfg("calculadora",c)},
+  imgTableOk:true,
+  async saveImg(id,dataUrl){
+    imgCache[id]=dataUrl;
+    if(this.sb){const{error}=await this.sb.from("imagens").upsert({id,img:dataUrl});if(error){this.imgTableOk=false;throw new Error(/imagens/.test(error.message)?"a tabela de imagens ainda não foi criada no Supabase":error.message)}}
+    else{try{localStorage.setItem("lf3d-img-"+id,dataUrl)}catch(e){throw new Error("memória do navegador cheia")}}
+  },
+  async getImg(id){
+    if(this.sb){try{const{data}=await this.sb.from("imagens").select("img").eq("id",id).maybeSingle();return data?.img||null}catch(e){return null}}
+    try{return localStorage.getItem("lf3d-img-"+id)}catch(e){return null}
+  }
 };
 async function save(id,rec){
   rec.atualizado=new Date().toISOString();
-  try{await store.save(id,rec);return true}
+  try{return (await store.save(id,rec))||true}
   catch(err){const e=$("ferr");if(e){e.textContent="Não foi possível salvar: "+(err.message||"tente de novo.");e.hidden=false}return false}
 }
 function alertFin(m){const n=$("note");if(n)n.textContent=m}
